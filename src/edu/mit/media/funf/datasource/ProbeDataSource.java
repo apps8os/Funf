@@ -45,7 +45,7 @@ public class ProbeDataSource extends StartableDataSource {
     
     @Override
     protected void onStop() {
-        // why listener (DataCollector through delegator) is unregistered for continuous probes and thus they are also disabled at stop?
+        // ktkarhu: why listener (DataCollector through delegator) is unregistered for continuous probes and thus they are also disabled at stop?
         /*
         if (source instanceof ContinuousProbe) {
             ((ContinuousProbe) source).unregisterListener(delegator);

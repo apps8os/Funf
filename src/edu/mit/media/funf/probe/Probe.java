@@ -326,8 +326,7 @@ public interface Probe {
 					probe.state = ENABLED;
 					probe.onStop();
 					probe.notifyStateChange(this);
-					// ktkarhu: why listeners are unregistered and thus probe gets disabled?
-                    //probe.unregisterAllListeners();
+                    probe.notifyOnDataCompleted(probe.getListeners());
 					if (probe.lock != null && probe.lock.isHeld()) {
 						probe.lock.release();
 						probe.lock = null;
@@ -339,6 +338,7 @@ public interface Probe {
 			protected void disable(Base probe) {
 				synchronized (probe) {
 					stop(probe);
+                    probe.unregisterListener(probe.getListeners());
 					if (probe.state == ENABLED) {
 						ENABLED.disable(probe);
 					}
@@ -453,32 +453,44 @@ public interface Probe {
 			return checkpoint;
 		}
 
-		public void unregisterListener(DataListener... listeners) {
+		private DataListener[] getListeners()
+        {
+            DataListener[] listeners = null;
+            synchronized (dataListeners) {
+                listeners = new DataListener[dataListeners.size()];
+                dataListeners.toArray(listeners);
+            }
+            return listeners;
+        }
+
+        private void notifyOnDataCompleted(DataListener... listeners)
+        {
+            if (listeners != null) {
+                JsonElement checkpoint = getCheckpointIfContinuable();
+                for (DataListener listener : listeners) {
+                    listener.onDataCompleted(getConfig(), checkpoint);
+                }
+            }
+        }
+
+        public void unregisterListener(DataListener... listeners) {
 			if (listeners != null) {
-				JsonElement checkpoint = getCheckpointIfContinuable();
 				for (DataListener listener : listeners) {
 					dataListeners.remove(listener);
-					listener.onDataCompleted(getConfig(), checkpoint);
 				}
 				// If no one is listening, stop using device resources
-				/* ktkarhu: why we stop so aggressively?
+				// ktkarhu: Isn't this always empty? why we stop so aggressively?
+                /*
                 if (dataListeners.isEmpty()) {
 					stop();
 				}
 				*/
-				if (passiveDataListeners.isEmpty()) {
+				/* ktkarhu
+                if (passiveDataListeners.isEmpty()) {
 					disable();
 				}
+				*/
 			}
-		}
-
-		protected void unregisterAllListeners() {
-			DataListener[] listeners = null;
-			synchronized (dataListeners) {
-				listeners = new DataListener[dataListeners.size()];
-				dataListeners.toArray(listeners);
-			}
-			unregisterListener(listeners);
 		}
 
 		public void registerPassiveListener(DataListener... listeners) {
